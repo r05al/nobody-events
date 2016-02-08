@@ -20,15 +20,15 @@
         <h1>nobodyEvents</h1>
       </div>
 
-      <div ng-repeat="event in events | orderBy:'-attendance'">
+      <div ng-repeat="event in events | orderBy:'-upvotes'">
         <span class="glyphicon glyphicon-thumbs-up"
-          ng-click="incrementAttendance(event)"></span>
-          {{event.attendance}}
+          ng-click="incrementUpvotes(event)"></span>
+          {{event.upvotes}}
         <span style="font-size:20px; margin-left:10px;">
           {{event.title}}
         </span>
         <span>
-          <a href="#/events/{{$index}}">Comments</a>
+          <a href="#/events/{{event._id}}">Comments</a>
         </span>
       </div>
 
