@@ -1,6 +1,6 @@
 var app = angular.module('nobody', ['ui.router']); // add ui.router as dependency
 
-app.factory('events', ['$http', function($http){
+app.factory('events', ['$http', 'auth', function($http, auth){
   var e = {
     events: []
   };
@@ -12,14 +12,17 @@ app.factory('events', ['$http', function($http){
   };
 
   e.create = function(event) {
-    return $http.post('/events', event).success(function(data){
+    return $http.post('/events', event, {
+      headers: { Authorization: 'Bearer ' + auth.getToken() }
+    }).success(function(data) {
       e.events.push(data);
     });
   };
 
   e.upvote = function(event) {
-    return $http.put('/events/' + event._id + '/upvote')
-      .success(function(data){
+    return $http.put('/events/' + event._id + '/upvote', null, {
+      headers: { Authorization: 'Bearer ' + auth.getToken() }
+    }).success(function(data) {
         event.upvotes += 1;
       });
   };
@@ -31,21 +34,36 @@ app.factory('events', ['$http', function($http){
   };
 
   e.addComment = function(id, comment) {
-    return $http.post('/events/' + id + '/comments', comment);
+    return $http.post('/events/' + id + '/comments', comment, {
+      headers: { Authorization: 'Bearer ' + auth.getToken() }
+    });
   };
 
   e.upvoteComment = function(event, comment) {
-    return $http.put('/events/' + event._id + '/comments/' + comment._id + '/upvote')
-      .success(function(data){
+    return $http.put('/events/' + event._id + '/comments/' + comment._id + '/upvote', null, {
+      headers: { Authorization: 'Bearer ' + auth.getToken()}
+    }).success(function(data) {
         comment.upvotes += 1;
       });
+  };
+
+  e.attend = function(event) {
+    return $http.post('/events/' + event._id + '/attend', null, {
+      headers: { Authorization: 'Bearer ' + auth.getToken() }
+    });
+  };
+
+  e.cancel = function(event) {
+    return $http.put('/events/' + event._id + '/cancel', null, {
+      headers: { Authorization: 'Bearer ' + auth.getToken() }
+    });
   };
 
   return e;
 
 }]).factory('auth', ['$http', '$window', function($http, $window){
   var auth = {};
-  
+
   auth.saveToken = function(token) {
     $window.localStorage['nobody-events-token'] = token;
   };
@@ -97,8 +115,10 @@ app.factory('events', ['$http', function($http){
 app.controller('MainCtrl', [
   '$scope',
   'events',
-  function($scope, events) {
+  'auth',
+  function($scope, events, auth) {
     $scope.events = events.events;
+    $scope.isLoggedIn = auth.isLoggedIn;
 
     $scope.addEvent = function() {
       if(!$scope.title || $scope.title === '') { return;}
@@ -113,53 +133,76 @@ app.controller('MainCtrl', [
     $scope.incrementUpvotes = function(event) {
       events.upvote(event);
     };
-  }]
-).controller('EventsCtrl', [
-  '$scope',
-  'events',
-  'event',
-  function($scope, events, event) {
-    $scope.event = event;
 
-    $scope.addComment = function(){
-      if($scope.body === '') { return; }
-      events.addComment(event._id, {
-        body: $scope.body,
-        author: 'user',
-      }).success(function(comment) {
-        $scope.event.comments.push(comment);
-      });
-      $scope.body = '';
-    };
+  }])
+  .controller('EventsCtrl', [
+    '$scope',
+    'events',
+    'event',
+    'auth',
+    function($scope, events, event, auth) {
+      $scope.event = event;
+      $scope.isLoggedIn = auth.isLoggedIn;
 
-    $scope.incrementUpvotes = function(comment){
-      events.upvoteComment(event, comment);
-    };
+      $scope.addComment = function(){
+        if($scope.body === '') { return; }
+        events.addComment(event._id, {
+          body: $scope.body,
+          author: 'user',
+        }).success(function(comment) {
+          $scope.event.comments.push(comment);
+        });
+        $scope.body = '';
+      };
 
-  }
-]).controller('AuthCtrl', [
-  '$scope',
-  '$state',
-  'auth',
-  function($scope, $state, auth) {
-    $scope.user = {};
-    
-    $scope.register = function() {
-      auth.register($scope.user).error(function(error) {
-        $scope.error = error;
-      }).then(function() {
-        $state.go('home');
-      });
-    }
-    
-    $scope.logIn = function() {
-      auth.logIn($scope.user).error(function(error){
-        $scope.error = error;
-      }).then(function(){
-        $state.go('home');
-      });
-    };
-  }]);
+      $scope.incrementUpvotes = function(comment){
+        events.upvoteComment(event, comment);
+      };
+
+      $scope.addAttendant = function(){
+        events.attend(event).success(function(event){
+          $scope.event.attendants = event.attendants;
+        });
+      };
+
+      $scope.removeAttendant = function(){
+        events.cancel(event).success(function(event){
+          $scope.event.attendants = event.attendants;
+        });
+      };
+
+    }])
+  .controller('AuthCtrl', [
+    '$scope',
+    '$state',
+    'auth',
+    function($scope, $state, auth) {
+      $scope.user = {};
+
+      $scope.register = function() {
+        auth.register($scope.user).error(function(error) {
+          $scope.error = error;
+        }).then(function() {
+          $state.go('home');
+        });
+      }
+
+      $scope.logIn = function() {
+        auth.logIn($scope.user).error(function(error){
+          $scope.error = error;
+        }).then(function(){
+          $state.go('home');
+          });
+      };
+    }])
+  .controller('NavCtrl', [
+    '$scope',
+    'auth',
+    function($scope, auth) {
+      $scope.isLoggedIn = auth.isLoggedIn;
+      $scope.currentUser = auth.currentUser;
+      $scope.logOut = auth.logOut;
+    }]);
 
 app.config([
   '$stateProvider',
@@ -185,6 +228,31 @@ app.config([
             return events.get($stateParams.id);
           }]
         }
+      })
+      .state('users', {
+        url: '/users',
+        templateUrl: '/users.html',
+        controller: 'UsersCtrl'
+      })
+      .state('login', {
+        url: '/login',
+        templateUrl: '/login.html',
+        controller: 'AuthCtrl',
+        onEnter: ['$state', 'auth', function($state, auth) {
+          if(auth.isLoggedIn()) {
+            $state.go('home');
+          }
+        }]
+      })
+      .state('register', {
+        url: '/register',
+        templateUrl: '/register.html',
+        controller: 'AuthCtrl',
+        onEnter: ['$state', 'auth', function($state, auth) {
+          if(auth.isLoggedIn()) {
+            $state.go('home');
+          }
+        }]
       });
 
     $urlRouterProvider.otherwise('home');
