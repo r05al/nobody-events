@@ -21,6 +21,7 @@ router.param('event', function(req, res, next, id) {
     if (err) { return next(err); }
     if (!event) { return next(new Error('can\'t find event')); }
 
+    event.username = "test";
     req.event = event;
     return next();
   });
@@ -38,6 +39,14 @@ router.param('comment', function(req, res, next, id) {
   });
 });
 
+router.get('/users', function(req, res, next) {
+  User.find(function(err, users){
+    if(err) { return next(err); }
+
+    res.json(users);
+  });
+});
+
 router.get('/events', function(req, res, next) {
   Event.find(function(err, events){
     if(err) { return next(err); }
@@ -48,7 +57,8 @@ router.get('/events', function(req, res, next) {
 
 router.post('/events', auth, function(req, res, next) {
   var event = new Event(req.body);
-  event.author = req.payload.username;
+
+  event.author = req.payload;
 
   event.save(function(err, event) {
     if(err) { return next(err); }
@@ -63,7 +73,7 @@ router.post('/events', auth, function(req, res, next) {
 //   });
 
 router.get('/events/:event', function(req, res, next) {
-  req.event.populate('comments', function(err, event) {
+  req.event.populate('attendants').populate('comments', function(err, event) {
     if (err) { return next(err); }
 
     res.json(event);
@@ -81,7 +91,7 @@ router.put('/events/:event/upvote', auth, function(req, res, next) {
 router.post('/events/:event/comments', auth, function(req, res, next){
   var comment = new Comment(req.body);
   comment.event = req.event;
-  comment.author = req.payload.username;
+  comment.author = req.payload;
 
   comment.save(function(err, comment){
     if(err) { return next(err); }
@@ -93,6 +103,28 @@ router.post('/events/:event/comments', auth, function(req, res, next){
       res.json(comment);
     });
   });
+});
+
+router.post('/events/:event/attend', auth, function(req, res, next){
+  var joiner = req.payload;
+
+  req.event.addAttendant(joiner);
+  req.event.populate('attendants', function(err, event){
+    if(err) { return next(err); }
+
+    res.json(event);
+  });
+});
+
+router.put('/events/:event/cancel', auth, function(req, res, next){
+  var joiner = req.payload;
+
+  req.event.removeAttendant(joiner);
+  req.event.populate('attendants', function(err, event){
+    if(err) { return next(err); }
+
+    res.json(event);
+  })
 });
 
 router.put('/events/:event/comments/:comment/upvote', auth, function(req, res, next){
