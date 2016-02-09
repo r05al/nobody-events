@@ -8,7 +8,17 @@
     <script src="/javascripts/angularApp.js"></script>
     <style> .glyphicon-thumbs-up { cursor:pointer } </style>
   </head>
-  <body ng-app="nobody" ng-controller="MainCtrl">
+  <body ng-app="nobody">
+    <nav class="navbar navbar-default pull-right" ng-controller="NavCtrl">
+      <ul class="nav navbar-nav">
+        <li><a href="/#/">nobodyEvents</a></li>
+        <li ng-show="isLoggedIn()"><a>{{ currentUser() }}</a></li>
+        <li ng-show="isLoggedIn()"><a href="" ng-click="logOut()">Log Out</a></li>
+        <li ng-hide="isLoggedIn()"><a href="/#/login">Log In</a></li>
+        <li ng-hide="isLoggedIn()"><a href="/#/register">Register</a></li>
+      </ul>
+    </nav>
+
     <div class="row">
       <div class="col-md-6 col-md-offset-3">
         <ui-view></ui-view>
@@ -27,13 +37,15 @@
         <span style="font-size:20px; margin-left:10px;">
           {{event.title}}
         </span>
+        <span ng-show="event.author">
+          hosted by <a href="#/users/{{event.author}}">{{ event.username }}</a> |
+        </span>
         <span>
-          <a href="#/events/{{event._id}}">Comments</a>
+          <a href="#/events/{{event._id}}">event details</a>
         </span>
       </div>
 
-      <form ng-submit="addEvent()"
-        style="margin-top:30px;">
+      <form ng-submit="addEvent()" ng-show="isLoggedIn()" style="margin-top:30px;">
         <h3>Add a new event</h3>
 
         <div class="form-group">
@@ -50,25 +62,42 @@
         </div>
         <button type="submit" class="btn btn-primary">Host</button>
       </form>
+
+      <div ng-hide="isLoggedIn()">
+        <h3>You need to <a href="/#/login">Log In</a> or <a href="/#/register">Register</a> before you can add an event.</h3>
+      </div>
     </script>
 
     <script type="text/ng-template" id="/events.html">
       <div class="page-header">
-        <h3>
-            {{event.title}}
-        </h3>
+        <h3>{{event.title}}</h3>
+        <h4>hosted at {{event.location}}</h4>
+        <h4>hosted by {{event.author}}</h4>
+        <h4><ng-pluralize count="event.attendants.length"
+                      when="{'0': 'Nobody is attending.',
+                             'one': '1 person is attending.',
+                             'other': '{} people are attending.'}">
+        </ng-pluralize></h4>
+        <button ng-hide="isAttending" ng-click="addAttendant()">Join</button>
+        <button ng-show="isAttending" ng-click="removeAttendant()">Cancel</button>
       </div>
 
       <div ng-repeat="comment in event.comments | orderBy:'-upvotes'">
         <span class="glyphicon glyphicon-thumbs-up"
           ng-click="incrementUpvotes(comment)"></span>
-        {{comment.upvotes}} - by {{comment.author}}
+        {{comment.upvotes}} - by {{comment.author}} at {{comment.getTimestamp()}}
         <span style="font-size:20px; margin-left:10px;">
           {{comment.body}}
         </span>
       </div>
 
-      <form ng-submit="addComment()" style="margin-top:30px;">
+      <h3>Attending</h3>
+      <div ng-show="event.attendants" ng-repeat="attendant in event.attendants">
+
+          {{attendant.username}}
+      </div>
+
+      <form ng-submit="addComment()" ng-show="isLoggedIn()" style="margin-top:30px;">
         <h3>Add a new comment</h3>
 
         <div class="form-group">
@@ -76,6 +105,10 @@
         </div>
         <button type="submit" class="btn btn-primary">Post</button>
       </form>
+
+      <div ng-hide="isLoggedIn()">
+        <h3>You need to <a href="/#/login">Log In</a> or <a href="/#/register">Register</a> before you can comment.</h3>
+      </div>
     </script>
 
     <script type="text/ng-template" id="/register.html">
@@ -89,7 +122,7 @@
 
       <form ng-submit="register()" style="margin-top:30px;">
         <h3>Register</h3>
-        
+
         <div class="form-group">
           <input type="text" class="form-control" placeholder="Username" ng-model="user.username"></input>
         </div>
