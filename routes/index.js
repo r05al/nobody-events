@@ -9,6 +9,25 @@ var Event = mongoose.model('Event');
 var Comment = mongoose.model('Comment');
 var User = mongoose.model('User');
 
+
+var populatedEvent = function(req, res, next) {
+  var query = Event.findById(req.event._id).populate('author', 'username')
+    .populate('attendants', 'username').populate('comments');
+
+  query.exec(function(err,event) {
+    if (err) { return next(err); }
+    if (!event) { return next(new Error('can\'t find event')); }
+
+    User.populate(event, {
+      path: 'comments.author',
+    }, function(err, event) {
+
+      req.populatedEvent = event;
+      return next();
+    });
+  });
+};
+
 /* GET home page. */
 router.get('/', function(req, res, next) {
   res.render('index', { title: 'Express' });
@@ -21,7 +40,6 @@ router.param('event', function(req, res, next, id) {
     if (err) { return next(err); }
     if (!event) { return next(new Error('can\'t find event')); }
 
-    event.username = "test";
     req.event = event;
     return next();
   });
@@ -72,12 +90,8 @@ router.post('/events', auth, function(req, res, next) {
 //     res.json(req.event);
 //   });
 
-router.get('/events/:event', function(req, res, next) {
-  req.event.populate('attendants').populate('comments', function(err, event) {
-    if (err) { return next(err); }
-
-    res.json(event);
-  });
+router.get('/events/:event', populatedEvent, function(req, res, next) {
+  res.json(req.populatedEvent);
 });
 
 router.put('/events/:event/upvote', auth, function(req, res, next) {
@@ -90,6 +104,7 @@ router.put('/events/:event/upvote', auth, function(req, res, next) {
 
 router.post('/events/:event/comments', auth, function(req, res, next){
   var comment = new Comment(req.body);
+
   comment.event = req.event;
   comment.author = req.payload;
 
@@ -100,7 +115,11 @@ router.post('/events/:event/comments', auth, function(req, res, next){
     req.event.save(function(err, event){
       if(err) { return next(err); }
 
-      res.json(comment);
+      comment.populate('author', function(err, comment) {
+        if (err) { return next(err); }
+
+        res.json(comment);
+      });
     });
   });
 });
