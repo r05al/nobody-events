@@ -93,6 +93,15 @@ app.factory('events', ['$http', 'auth', function($http, auth){
     }
   };
 
+  auth.userId = function() {
+    if(auth.isLoggedIn()) {
+      var token = auth.getToken();
+      var payload = JSON.parse($window.atob(token.split('.')[1]));
+
+      return payload._id;
+    }
+  };
+
   auth.register = function(user) {
     return $http.post('/register', user).success(function(data) {
       auth.saveToken(data.token);
@@ -143,6 +152,7 @@ app.controller('MainCtrl', [
     function($scope, events, event, auth) {
       $scope.event = event;
       $scope.isLoggedIn = auth.isLoggedIn;
+      $scope.isAttending = event.attendants.includes(auth.userId());
 
       $scope.addComment = function(){
         if($scope.body === '') { return; }
@@ -162,12 +172,14 @@ app.controller('MainCtrl', [
       $scope.addAttendant = function(){
         events.attend(event).success(function(event){
           $scope.event.attendants = event.attendants;
+          $scope.isAttending = true;
         });
       };
 
       $scope.removeAttendant = function(){
         events.cancel(event).success(function(event){
           $scope.event.attendants = event.attendants;
+          $scope.isAttending = false;
         });
       };
 
