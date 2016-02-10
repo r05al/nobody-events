@@ -79,7 +79,7 @@ router.get('/events', function(req, res, next) {
 
   query.exec(function(err, events) {
     if (err) { return next(err); }
-    if (!events) { return next(new Error('can\'t find comment')); }
+    if (!events) { return next(new Error('can\'t find events')); }
 
     User.populate(events, {
       path: 'author',
@@ -125,6 +125,14 @@ router.post('/events', auth, function(req, res, next) {
 
 router.get('/events/:event', populatedEvent, function(req, res, next) {
   res.json(req.populatedEvent);
+});
+
+router.delete('/events/:event', function(req, res, next) {
+  Event.remove({ _id: req.event._id }, function(err, event) {
+    if (err) { return next(err); }
+
+    res.json(event);
+  });
 });
 
 router.put('/events/:event/upvote', auth, function(req, res, next) {
