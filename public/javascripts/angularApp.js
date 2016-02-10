@@ -59,6 +59,14 @@ app.factory('events', ['$http', 'auth', function($http, auth){
     });
   };
 
+  e.delete = function(event) {
+    return $http.delete('/events/' + event._id, {
+      headers: { Authorization: 'Bearer ' + auth.getToken() }
+    }).success(function(data){
+      e.getAll();
+    });
+  };
+
   return e;
 
 }]).factory('auth', ['$http', '$window', function($http, $window){
@@ -128,6 +136,7 @@ app.controller('MainCtrl', [
   function($scope, events, auth) {
     $scope.events = events.events;
     $scope.isLoggedIn = auth.isLoggedIn;
+    $scope.currentUser = auth.currentUser();
 
     $scope.addEvent = function() {
       if(!$scope.title || $scope.title === '') { return;}
@@ -139,8 +148,16 @@ app.controller('MainCtrl', [
       $scope.location = '';
     };
 
+    $scope.removeEvent = function(event) {
+      events.delete(event);
+    };
+
     $scope.incrementUpvotes = function(event) {
       events.upvote(event);
+    };
+
+    $scope.isYourPost = function(event) {
+      return event.author.username === $scope.currentUser;
     };
 
   }])
