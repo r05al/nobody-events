@@ -57,20 +57,49 @@ router.param('comment', function(req, res, next, id) {
   });
 });
 
-router.get('/users', function(req, res, next) {
-  User.find(function(err, users){
-    if(err) { return next(err); }
+router.param('user', function(req, res, next, id) {
+  var query = User.findById(id);
 
-    res.json(users);
+  query.exec(function(err, user) {
+    if (err) { return next(err); }
+    if (!user) { return next(new Error('can\'t find user')); }
+
+    req.user = user;
+    return next();
   });
 });
 
-router.get('/events', function(req, res, next) {
-  Event.find(function(err, events){
-    if(err) { return next(err); }
+router.get('/users/:user', function(req, res, next) {
+  Event.find()
+  res.json(req.user);
+});
 
-    res.json(events);
+router.get('/events', function(req, res, next) {
+  var query = Event.find();
+
+  query.exec(function(err, events) {
+    if (err) { return next(err); }
+    if (!events) { return next(new Error('can\'t find comment')); }
+
+    User.populate(events, {
+      path: 'author',
+    }, function(err, event) {
+
+      res.json(event);
+    });
   });
+
+  // Event.find(function(err, events){
+  //   if(err) { return next(err); }
+
+  //   events.populate('author', function(err, event) {
+  //     if (err) { return next(err); }
+
+  //     res.json(event);
+  //   });
+
+  //   res.json(events);
+  // });
 });
 
 router.post('/events', auth, function(req, res, next) {
@@ -81,7 +110,11 @@ router.post('/events', auth, function(req, res, next) {
   event.save(function(err, event) {
     if(err) { return next(err); }
 
-    res.json(event);
+    event.populate('author', function(err, event) {
+      if (err) { return next(err); }
+
+      res.json(event);
+    })
   });
 });
 
