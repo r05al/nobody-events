@@ -38,7 +38,7 @@
           {{event.title}}
         </span>
         <span ng-show="event.author">
-          hosted by <a href="#/users/{{event.author}}">{{ event.username }}</a> |
+          hosted by <a href="#/users/{{event.author._id}}">{{ event.author.username }}</a> |
         </span>
         <span>
           <a href="#/events/{{event._id}}">event details</a>
@@ -72,20 +72,22 @@
       <div class="page-header">
         <h3>{{event.title}}</h3>
         <h4>hosted at {{event.location}}</h4>
-        <h4>hosted by {{event.author}}</h4>
+        <h4>hosted by {{event.author.username}}</h4>
         <h4><ng-pluralize count="event.attendants.length"
                       when="{'0': 'Nobody is attending.',
                              'one': '1 person is attending.',
                              'other': '{} people are attending.'}">
         </ng-pluralize></h4>
-        <button ng-hide="isAttending" ng-click="addAttendant()">Join</button>
-        <button ng-show="isAttending" ng-click="removeAttendant()">Cancel</button>
+        <div ng-show="isLoggedIn()">
+          <button ng-hide="isAttending" ng-click="addAttendant()">Join</button>
+          <button ng-show="isAttending" ng-click="removeAttendant()">Cancel</button>
+        </div>
       </div>
 
       <div ng-repeat="comment in event.comments | orderBy:'-upvotes'">
         <span class="glyphicon glyphicon-thumbs-up"
           ng-click="incrementUpvotes(comment)"></span>
-        {{comment.upvotes}} - by {{comment.author}} at {{comment.getTimestamp()}}
+        {{comment.upvotes}} - by {{comment.author.username}} at {{comment.getTimestamp()}}
         <span style="font-size:20px; margin-left:10px;">
           {{comment.body}}
         </span>
