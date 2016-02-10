@@ -43,6 +43,9 @@
         <span>
           <a href="#/events/{{event._id}}">event details</a>
         </span>
+        <span ng-click="removeEvent(event)" ng-show="isYourPost(event)">
+          delete
+        </span>
       </div>
 
       <form ng-submit="addEvent()" ng-show="isLoggedIn()" style="margin-top:30px;">
