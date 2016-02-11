@@ -140,9 +140,10 @@ app.controller('MainCtrl', [
 
     $scope.addEvent = function() {
       if(!$scope.title || $scope.title === '') { return;}
+
       events.create({
         title: $scope.title,
-        location: $scope.location,
+        location: $('#searchTextField').val()
       });
       $scope.title = '';
       $scope.location = '';
@@ -159,6 +160,9 @@ app.controller('MainCtrl', [
     $scope.isYourPost = function(event) {
       return event.author.username === $scope.currentUser;
     };
+
+    var input = document.getElementById('searchTextField');
+    var autocomplete = new google.maps.places.Autocomplete(input);
 
   }])
   .controller('EventsCtrl', [
